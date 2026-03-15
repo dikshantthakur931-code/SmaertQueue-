@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartQueue | Doctor Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1 { margin: 0; color: #1a73e8; }
+        .btn-call { background: #34a853; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 50px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-call:hover { background: #2b803f; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .queue-col { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .queue-col h3 { text-align: center; padding-bottom: 10px; border-bottom: 2px solid #eee; margin-top: 0; }
+        .patient-card { border: 1px solid #e0e0e0; padding: 15px; margin-bottom: 10px; border-radius: 8px; background: #fafafa; display: flex; justify-content: space-between; align-items: center; }
+        .patient-card.transit { border-left: 5px solid #fbbc04; }
+        .patient-card.waiting { border-left: 5px solid #4285f4; }
+        .badge { font-size: 12px; padding: 4px 8px; border-radius: 12px; font-weight: bold; }
+        .bg-transit { background: #fef7e0; color: #b06000; }
+        .bg-waiting { background: #e8f0fe; color: #1a73e8; }
+        .action-btn { background: #1a73e8; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>🏥 {{ doctor.full_name }}'s Dashboard</h1>
+            <p style="margin: 5px 0 0 0; color: #666;">{{ doctor.hospital_name }}</p>
+        </div>
+        <button class="btn-call" onclick="callNext()">🔊 Call Next Patient</button>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="queue-col"><h3>🧪 Priority 1: Lab Returns</h3><div id="queue-labs"></div></div>
+        <div class="queue-col"><h3>🔄 Priority 2: Referrals</h3><div id="queue-refs"></div></div>
+        <div class="queue-col"><h3>🧍 Priority 3: Normal Queue</h3><div id="queue-norm"></div></div>
+    </div>
+
+    <script>
+        const DOCTOR_ID = {{ doctor.user_id }};
+
+        window.onload = fetchQueue;
+
+        function fetchQueue() {
+            fetch(`/api/doctor/${DOCTOR_ID}/queue`)
+                .then(response => response.json())
+                .then(data => {
+                    renderList('queue-labs', data.priority_1_labs);
+                    renderList('queue-refs', data.priority_2_referrals);
+                    renderList('queue-norm', data.priority_3_normal);
+                });
+        }
+
+        function renderList(elementId, patients) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = ''; 
+            if(patients.length === 0) { container.innerHTML = '<p style="text-align:center; color:#888;">Queue is empty</p>'; return; }
+
+            patients.forEach(p => {
+                const isTransit = p.status === 'in_transit';
+                const statusBadge = isTransit ? `<span class="badge bg-transit">🚶 In Transit (Buffer)</span>` : `<span class="badge bg-waiting">🟢 Waiting</span>`;
+                container.innerHTML += `
+                    <div class="patient-card ${isTransit ? 'transit' : 'waiting'}">
+                        <div><strong>${p.patient_name}</strong><br>${statusBadge}</div>
+                        <button class="action-btn" onclick="sendToLab(${p.visit_id})">Send to Lab</button>
+                    </div>`;
+            });
+        }
+
+        function callNext() {
+            fetch(`/api/doctor/${DOCTOR_ID}/call_next`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => { alert(data.message); fetchQueue(); });
+        }
+
+        function sendToLab(visitId) {
+            const labType = prompt("Enter Lab Type (e.g., Radiology, Pathology):", "Pathology");
+            if (!labType) return;
+            fetch(`/api/doctor/send_to_lab`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ visit_id: visitId, doctor_id: DOCTOR_ID, lab_type: labType })
+            }).then(() => fetchQueue());
+        }
+    </script>
+</body>
+</html>
