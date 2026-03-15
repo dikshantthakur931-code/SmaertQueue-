@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartQueue | Laboratory</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 8px solid #9c27b0; }
+        h1 { margin: 0; color: #9c27b0; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .queue-col { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .queue-col h3 { text-align: center; padding-bottom: 10px; border-bottom: 2px solid #eee; margin-top: 0; }
+        .patient-card { border: 1px solid #e0e0e0; padding: 15px; margin-bottom: 10px; border-radius: 8px; background: #fafafa; display: flex; justify-content: space-between; align-items: center; }
+        .patient-card.incoming { border-left: 5px solid #fbbc04; }
+        .patient-card.processing { border-left: 5px solid #34a853; background: #e6f4ea; }
+        .btn-process { background: #34a853; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-complete { background: #1a73e8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-malfunction { background: #ea4335; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px;}
+        .badge { font-size: 12px; padding: 4px 8px; border-radius: 12px; font-weight: bold; display: inline-block; margin-top: 5px; }
+        .bg-transit { background: #fef7e0; color: #b06000; }
+        .bg-proc { background: #34a853; color: white; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>🔬 Pathology Lab Dashboard</h1>
+            <p style="margin: 5px 0 0 0; color: #666;">Central Diagnostic Hub</p>
+        </div>
+        <button class="btn-malfunction" onclick="declareMalfunction()">⚠️ Declare Code Black</button>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="queue-col">
+            <h3>🚶 Incoming & Waiting</h3>
+            <div id="queue-incoming"></div>
+        </div>
+        <div class="queue-col">
+            <h3>⚙️ Active Processing</h3>
+            <div id="queue-processing"></div>
+        </div>
+    </div>
+
+    <script>
+        const LAB_TYPE = 'Pathology';
+
+        window.onload = () => {
+            fetchQueue();
+            setInterval(fetchQueue, 5000); 
+        };
+
+        function fetchQueue() {
+            fetch(`/api/lab/${LAB_TYPE}/queue`)
+                .then(response => response.json())
+                .then(data => {
+                    const incomingDiv = document.getElementById('queue-incoming');
+                    const processingDiv = document.getElementById('queue-processing');
+                    incomingDiv.innerHTML = '';
+                    processingDiv.innerHTML = '';
+
+                    data.forEach(order => {
+                        if (order.status === 'patient_in_transit') {
+                            incomingDiv.innerHTML += `
+                                <div class="patient-card incoming">
+                                    <div><strong>Visit #${order.visit_id}</strong><br><span class="badge bg-transit">Walking from Dr. #${order.ordered_by_id}</span></div>
+                                    <button class="btn-process" onclick="updateStatus(${order.order_id}, ${order.visit_id}, 'processing')">Start Blood Draw</button>
+                                </div>`;
+                        } else if (order.status === 'processing') {
+                            processingDiv.innerHTML += `
+                                <div class="patient-card processing">
+                                    <div><strong>Visit #${order.visit_id}</strong><br><span class="badge bg-proc">In Machine / Processing</span></div>
+                                    <button class="btn-complete" onclick="updateStatus(${order.order_id}, ${order.visit_id}, 'completed')">Upload & Complete</button>
+                                </div>`;
+                        }
+                    });
+                });
+        }
+
+        function updateStatus(orderId, visitId, newStatus) {
+            fetch(`/api/lab/update_status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: orderId, visit_id: visitId, status: newStatus })
+            }).then(() => fetchQueue());
+        }
+
+        function declareMalfunction() {
+            alert("CODE BLACK INITIATED. Redirecting all future tests.");
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartQueue | Welcome</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .container { text-align: center; background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 800px; width: 90%; }
+        h1 { color: #1a73e8; font-size: 36px; margin-bottom: 10px; }
+        p { color: #666; font-size: 18px; margin-bottom: 40px; }
+        .role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .role-card { background: #fff; border: 2px solid #e0e0e0; border-radius: 12px; padding: 30px 20px; cursor: pointer; transition: all 0.3s ease; text-decoration: none; color: #333; display: block; }
+        .role-card:hover { transform: translateY(-5px); }
+        .emoji { font-size: 50px; margin-bottom: 15px; display: block; }
+        .role-title { font-size: 20px; font-weight: bold; margin: 0; }
+        .patient:hover { border-color: #34a853; box-shadow: 0 8px 15px rgba(52, 168, 83, 0.2); }
+        .doctor:hover { border-color: #1a73e8; box-shadow: 0 8px 15px rgba(26, 115, 232, 0.2); }
+        .lab:hover { border-color: #9c27b0; box-shadow: 0 8px 15px rgba(156, 39, 176, 0.2); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 SmartQueue Portal</h1>
+        <p>Welcome to the centralized hospital management system. Please select your role.</p>
+
+        <div class="role-grid">
+            <a href="#" onclick="patientLogin()" class="role-card patient">
+                <span class="emoji">📱</span>
+                <p class="role-title">I am a Patient</p>
+            </a>
+            <a href="#" onclick="doctorLogin()" class="role-card doctor">
+                <span class="emoji">👨‍⚕️</span>
+                <p class="role-title">I am a Doctor</p>
+            </a>
+            <a href="/lab" class="role-card lab">
+                <span class="emoji">🔬</span>
+                <p class="role-title">I am a Lab Tech</p>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function patientLogin() {
+            let name = prompt("Welcome! Please enter your full name:");
+            if(name) {
+                // Pass the name securely in the URL to the patient dashboard
+                window.location.href = '/patient?name=' + encodeURIComponent(name);
+            }
+        }
+
+        function doctorLogin() {
+            let uname = prompt("Enter your Doctor ID (e.g., D1H1, D2H4):", "D1H1");
+            if(uname) {
+                window.location.href = '/doctor/' + uname.toUpperCase();
+            }
+        }
+    </script>
+</body>
+</html>

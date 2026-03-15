@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartQueue | Patient App</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; }
+        .mobile-container { background: white; width: 100%; max-width: 400px; min-height: 100vh; box-shadow: 0 0 20px rgba(0,0,0,0.1); padding: 30px 20px; box-sizing: border-box; text-align: center; }
+        h1 { color: #1a73e8; margin-bottom: 5px; }
+        .status-card { background: #e8f0fe; border: 2px solid #1a73e8; border-radius: 15px; padding: 30px 20px; margin-top: 30px; display: none; }
+        .status-card.active { display: block; }
+        .big-number { font-size: 60px; font-weight: bold; color: #1a73e8; margin: 10px 0; }
+        .eta { font-size: 18px; color: #d93025; font-weight: bold; }
+        input { width: 100%; padding: 15px; margin-top: 20px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; box-sizing: border-box; text-align: center;}
+        .btn-join { background: #1a73e8; color: white; border: none; padding: 15px; width: 100%; font-size: 18px; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 20px; transition: 0.3s; }
+        .btn-join:hover { background: #1557b0; }
+        .turn-alert { background: #34a853; color: white; border-radius: 15px; padding: 30px 20px; margin-top: 30px; display: none; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <h1>👋 Hello, <span id="patientNameDisplay">Patient</span>!</h1>
+        <p style="color:#666; margin-bottom:30px;">Welcome to your SmartQueue portal.</p>
+
+        <div id="booking-screen">
+            <p><strong>Which doctor are you seeing today?</strong></p>
+            <input type="text" id="docUsername" placeholder="Enter Doctor ID (e.g. D1H1)" required>
+            <button class="btn-join" onclick="joinQueue()">🎫 Tap to Join Queue</button>
+            <p id="error-msg" style="color:red; display:none; margin-top:10px;"></p>
+        </div>
+
+        <div id="tracker-screen" class="status-card">
+            <h3>Your Position</h3>
+            <div class="big-number" id="position-display">--</div>
+            <p>People ahead of you</p>
+            <div class="eta">Estimated Wait: <span id="eta-display">--</span> mins</div>
+        </div>
+
+        <div id="turn-screen" class="turn-alert">
+            <h2>🚨 IT'S YOUR TURN!</h2>
+            <p>Please proceed to the doctor's room immediately.</p>
+        </div>
+    </div>
+
+    <script>
+        // Get patient name from the URL!
+        const urlParams = new URLSearchParams(window.location.search);
+        let patientName = urlParams.get('name') || "Walk-in Patient";
+        document.getElementById('patientNameDisplay').innerText = patientName;
+
+        let myVisitId = null;
+        let pollInterval = null;
+
+        function joinQueue() {
+            const docIdInput = document.getElementById('docUsername').value.trim();
+            if (!docIdInput) return;
+
+            fetch('/api/patient/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ doc_username: docIdInput, patient_name: patientName }) 
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.error) {
+                    document.getElementById('error-msg').innerText = data.error;
+                    document.getElementById('error-msg').style.display = 'block';
+                } else {
+                    myVisitId = data.visit_id;
+                    document.getElementById('booking-screen').style.display = 'none';
+                    document.getElementById('tracker-screen').classList.add('active');
+                    checkStatus();
+                    pollInterval = setInterval(checkStatus, 5000);
+                }
+            });
+        }
+
+        function checkStatus() {
+            if (!myVisitId) return;
+            fetch(`/api/patient/${myVisitId}/status`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'in_consult') {
+                    clearInterval(pollInterval);
+                    document.getElementById('tracker-screen').classList.remove('active');
+                    document.getElementById('turn-screen').style.display = 'block';
+                } else {
+                    document.getElementById('position-display').innerText = data.position - 1; 
+                    document.getElementById('eta-display').innerText = data.eta_minutes;
+                }
+            });
+        }
+    </script>
+</body>
+</html>
